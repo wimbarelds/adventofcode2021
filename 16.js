@@ -13,41 +13,41 @@ Array.prototype.product = function() {
 let fullStringIndex = 0;
 let versionSum = 0;
 
+const readBits = (/** @type {number} */ numBits, /** @type {boolean} */ asBinary = false) => {
+  const bits = inputBinary.substr(fullStringIndex, numBits);
+  fullStringIndex += numBits;
+  return asBinary ? bits : parseInt(bits, 2);
+}
+
 const readPackets = (/** @type {number} */ numPackets, /** @type {number} */ totalLength) => {
   const startIndex = fullStringIndex;
   const packets = [];
   for (;;) {
-    // if iether condition is true, we're done
+    // if either condition is true, we're done
     if (numPackets && packets.length === numPackets) break;
     if (totalLength && fullStringIndex >= (startIndex + totalLength)) break;
-    const version = parseInt(inputBinary.substr(fullStringIndex, 3), 2);
-    const typeId = parseInt(inputBinary.substr(fullStringIndex + 3, 3), 2);
-    fullStringIndex += 6;
+    const version = readBits(3);
+    const typeId = readBits(3);
     if (typeId === 4) {
       let packetValueBits = '';
       for (;;) {
-        const leadingBit = inputBinary.substr(fullStringIndex, 1);
-        packetValueBits += inputBinary.substr(fullStringIndex + 1, 4);
-        fullStringIndex += 5;
-        if (leadingBit === '0') break;
+        const leadingBit = readBits(1);
+        packetValueBits += readBits(4, true);
+        if (leadingBit === 0) break;
       }
       const value = parseInt(packetValueBits, 2);
       packets.push({ version, typeId, value });
     } else {
-      const lengthTypeId = inputBinary.substr(fullStringIndex, 1);
-      fullStringIndex++;
-
-      if (lengthTypeId === '0') {
-        const subPacketsBitLength = parseInt(inputBinary.substr(fullStringIndex, 15), 2);
-        fullStringIndex += 15;
+      const lengthTypeId = readBits(1);
+      if (lengthTypeId === 0) {
+        const subPacketsBitLength = readBits(15);
         packets.push({
           version,
           typeId,
           subpackets: readPackets(0, subPacketsBitLength),
         });
-      } else if (lengthTypeId === '1') {
-        const numSubpackets = parseInt(inputBinary.substr(fullStringIndex, 11), 2);
-        fullStringIndex += 11;
+      } else if (lengthTypeId === 1) {
+        const numSubpackets = readBits(11);
         packets.push({
           version,
           typeId,
@@ -64,14 +64,6 @@ const readPackets = (/** @type {number} */ numPackets, /** @type {number} */ tot
 
 const outsidePacket = readPackets(1)[0];
 console.log('Part 1', versionSum);
-
-// typeId 0 === sum
-// typeId 1 === product (multiply all values)
-// typeId 2 === Math.min
-// typeId 3 === Math.max
-// typeId 5 === (subpacket1 > subpacket2) ? 1 : 0
-// typeId 6 === (subpacket1 < subpacket2) ? 1 : 0
-// typeId 7 === (subpacket1 === subpacket2) ? 1 : 0
 
 const getPacketValue = (packet) => {
   if (packet.typeId === 4) {
